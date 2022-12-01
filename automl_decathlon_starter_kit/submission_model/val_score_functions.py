@@ -8,6 +8,10 @@ from sklearn.metrics import (
 import torch
 import numpy as np
 
+#Since we do not have access to the original decathlon scorer function, we decided to build our own
+#We assume that tasks that are part of the secret tasks will behave similarly to the evaluation task
+#Because of that we use the same validation metrics to determine the best hyperparameter configuration
+#In case we encounter an task of unknown format, we fall back to standard validation loss
 def decathlon_scorer(solution, prediction, sequence_size,
     channel, row_count, col_count, output_shape, task_type):
     if len(output_shape) > 1:
