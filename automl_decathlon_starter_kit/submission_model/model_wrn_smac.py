@@ -102,6 +102,7 @@ class Model:
             "Device Found = ", self.device, "\nMoving Model and Data into the device..."
         )
 
+        #We create member variables to be able to access those values from all functions
         self.input_shape = (sequence_size, channel, row_count, col_count)
         self.sequence_size = sequence_size
         self.channel = channel
@@ -136,6 +137,7 @@ class Model:
         self.train_batch_size = 128
         self.test_batch_size = 128
 
+        #We keep track of our best configuration by comparing validation scores
         self.best_score = np.inf
 
     def get_dataloader(self, dataset, batch_size, split):
@@ -245,6 +247,7 @@ class Model:
               budget. If remaining_time_budget is None, no time budget is imposed.
         """
 
+        #Keep track of time to prevent timeout
         train_begin = time.time()
         
         self.complete_train_dataset = copy.deepcopy(dataset)
@@ -283,9 +286,11 @@ class Model:
         # Training loop
         logger.info(f"epochs to train {self.training_epochs}")
 
+        #Define the search space for our hyperparameters
         dropout = UniformFloatHyperparameter('dropout', 0.0, 0.9, default_value=0.7)
         learning_rate = UniformFloatHyperparameter('learning_rate', 1e-8, 1e-1, default_value=1e-3)
 
+        #We cap the amount of time spend on HPO to 80% of the available wallclock time
         cs = ConfigurationSpace()
         cs.add_hyperparameters([dropout, learning_rate])
         scenario = Scenario({
@@ -311,12 +316,15 @@ class Model:
         self.remaining_time_budget = remaining_time_budget
         self.first_max_epoch_time = None
 
+        #Get one baseline run to have a reference value how good it performs and how long it takes to train
         def_value = tae.run(config=cs.get_default_configuration(), budget=max_epochs, seed=0)
 
+        #Iteratively reduce available time
         self.first_max_epoch_time = time.time() - train_begin
         self.remaining_time_budget -= self.first_max_epoch_time
         self.time_checkpoint = time.time()
 
+        #In case a timeout is looming we throw an exception to prevent a complete failure
         try:
             incumbent = smac.optimize()
         except:
@@ -408,6 +416,7 @@ class Model:
 
         model.train()
         for _ in tqdm(range(int(budget)), desc="Epochs trained", position=0):
+            #In case the available time falls below the amount of time it takes for one complete run, we throw an exception
             if self.first_max_epoch_time is not None:
                 self.time_since_last = time.time() - self.time_checkpoint
                 self.time_checkpoint = time.time()
@@ -433,6 +442,8 @@ class Model:
         model.eval()
         solution = self.val_dataset.dataset.y
         preds = self.validation(self.valloader, model)
+        #We compare the validation score by relying on our custom created decathlon scorer.
+        #In case no fitting score function is found, we use the standard validation loss
         score = decathlon_scorer(solution, preds, self.sequence_size, self.channel,
                                 self.row_count, self.col_count, self.output_shape, self.task_type)
         if score == False:
