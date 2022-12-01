@@ -92,6 +92,7 @@ class Model:
         print("\n\nINPUT SHAPE = ", self.input_shape)
 
         #We assume that "row" here really means row and not column in a non-quadratic array
+        #Here, we call the ConvLSTM implementation
         self.model = Seq2Seq(num_channels=1, num_kernels=64, 
                         kernel_size=(3, 3), padding=(1, 1), activation="relu", 
                         frame_size=(row_count, col_count), num_layers=3).to(self.device)
@@ -255,10 +256,14 @@ class Model:
           None, updates the model parameters
         """
         self.model.train()
+        #The training of the ConvLSTM runs for 200 epochs
         epochs = 200
         for _ in tqdm(range(epochs), desc="Epochs trained", position=0):
             looming_time_out_flag = False
             for x, y in self.trainloader:
+                #In case available time arrives at a dangerous low, we stop the training and return the existing model
+                #It is important that the exception is thrown here, since loading the files from the train loader takes a large amount of time.
+                #If everything goes bad and the exception would only be thrown after each epoch, the timeout could already be triggered.
                 self.time_since_last = time.time() - self.time_checkpoint
                 self.time_checkpoint = time.time()
                 self.remaining_time_budget -= self.time_since_last
