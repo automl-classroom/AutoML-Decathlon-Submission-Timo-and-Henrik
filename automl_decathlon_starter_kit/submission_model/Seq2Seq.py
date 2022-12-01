@@ -1,3 +1,7 @@
+#ConvLSTM from https://sladewinter.medium.com/video-frame-prediction-using-convlstm-network-in-pytorch-b5210a6ce582
+#However, that implementation only works for moving mnist, which only has black (0) or white (255) pixels
+#Our slightly changed implementation also works on other video-like data that has no discrete elements
+
 import torch.nn as nn
 import torch
 from convLSTM import ConvLSTM
